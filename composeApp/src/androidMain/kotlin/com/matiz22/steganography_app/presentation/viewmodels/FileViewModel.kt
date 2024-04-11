@@ -9,6 +9,8 @@ import com.matiz22.steganography_app.presentation.event.FileEvents
 
 class FileViewModel : ViewModel() {
     var selectedImageUri by mutableStateOf<Uri?>(null)
+    var decodedMessage by mutableStateOf<String>("")
+    var message by mutableStateOf<String>("")
     fun onEvent(fileEvent: FileEvents) {
         when (fileEvent) {
             is FileEvents.PickFile -> {
@@ -18,6 +20,12 @@ class FileViewModel : ViewModel() {
             is FileEvents.UnpickFile -> {
                 selectedImageUri = null
             }
+
+            is FileEvents.UpdateMessage -> {
+                message = fileEvent.message
+            }
+
+            is FileEvents.AddMessage -> TODO()
         }
     }
 }
