@@ -1,16 +1,16 @@
-package data.repository
-
 import data.consts.StartAndEndOfFileTypes
 import domain.model.Photo
 import domain.model.PhotoType
 import domain.repository.FileProcessingRepository
 
-class FileProcessingRepositoryImpl: FileProcessingRepository {
+class FileProcessingRepositoryImpl : FileProcessingRepository {
+    @OptIn(ExperimentalStdlibApi::class)
     override suspend fun addMessage(photo: Photo): Photo? {
-        val startAndEndOfFileTypes = when(photo.photoType){
+        val startAndEndOfFileType = when (photo.photoType) {
             PhotoType.JPG -> {
                 StartAndEndOfFileTypes.JPGFileStartEnd
             }
+
             PhotoType.PNG -> {
                 StartAndEndOfFileTypes.PNGFileStartEnd
             }
@@ -19,8 +19,43 @@ class FileProcessingRepositoryImpl: FileProcessingRepository {
                 return null
             }
         }
-        val startIndex = photo.photo.filterIndexed { index, byte ->
-            
+        var matchingIndex = 0
+        val photoArrayIndexes = photo.photo.indices
+        var startOfPhoto: Int = 0
+        for (i in photoArrayIndexes) {
+            if (startAndEndOfFileType.start[matchingIndex] == photo.photo[i]) {
+                matchingIndex += 1
+            } else {
+                matchingIndex = 0
+            }
+            if (matchingIndex == startAndEndOfFileType.start.size) {
+                startOfPhoto = i - matchingIndex
+                matchingIndex = 0
+                break
+            }
+        }
+        var endOfPhoto: Int = 0
+        val reversedEndSequence = startAndEndOfFileType.end.reversed()
+        for (i in photoArrayIndexes.reversed()) {
+            if (reversedEndSequence[matchingIndex] == photo.photo[i]) {
+                matchingIndex += 1
+            } else {
+                matchingIndex = 0
+            }
+            if (matchingIndex == startAndEndOfFileType.end.size) {
+                endOfPhoto = i - matchingIndex
+                break
+            }
+        }
+        return try {
+            photo.copy(
+                photo = photo.photo.copyOfRange(
+                    startOfPhoto,
+                    endOfPhoto
+                ) + photo.message.hexToByteArray()
+            )
+        } catch (e: Exception) {
+            null
         }
     }
 }
