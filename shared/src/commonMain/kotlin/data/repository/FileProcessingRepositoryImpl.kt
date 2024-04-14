@@ -52,10 +52,29 @@ class FileProcessingRepositoryImpl : FileProcessingRepository {
                 photo = photo.photo.copyOfRange(
                     startOfPhoto,
                     endOfPhoto
-                ) + photo.message.hexToByteArray()
+                ) + encrypt(text = photo.message).hexToByteArray()
             )
         } catch (e: Exception) {
             null
         }
+    }
+    private fun encrypt(text: String, shiftKey: Int = 10): String {
+        val result = StringBuilder()
+
+        for (char in text) {
+            if (char.isLetter()) {
+                val base = if (char.isLowerCase()) 'a' else 'A'
+                val encryptedChar = ((char - base + shiftKey) % 26 + base.code).toChar()
+                result.append(encryptedChar)
+            } else {
+                result.append(char)
+            }
+        }
+
+        return result.toString()
+    }
+
+    private fun decrypt(text: String, shiftKey: Int = 10): String {
+        return encrypt(text, 26 - shiftKey)
     }
 }
