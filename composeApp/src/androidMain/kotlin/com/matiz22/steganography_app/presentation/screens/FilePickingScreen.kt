@@ -13,10 +13,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -37,28 +41,37 @@ fun FilePickingScreen(
     val decoded = fileViewModel.decodedMessage
     val message = fileViewModel.message
     val context = LocalContext.current
+    val channel = fileViewModel.resultsChannel
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    val photoPicker =
-        rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent(),
-            onResult = { uri ->
-                if (uri != null) {
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        fileViewModel.onEvent(
-                            FileEvents.PickFile(
-                                bytes = input.readBytes(),
-                                type = resolveImageExtension(
-                                    context.contentResolver.getType(uri) ?: ""
-                                )
+    LaunchedEffect(channel) {
+        channel.collect { message ->
+            snackbarHostState.showSnackbar(message = message)
+        }
+    }
+
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            if (uri != null) {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    fileViewModel.onEvent(
+                        FileEvents.PickFile(
+                            bytes = input.readBytes(), type = resolveImageExtension(
+                                context.contentResolver.getType(uri) ?: ""
                             )
                         )
-                    }
+                    )
                 }
-            })
+            }
+        })
 
     Scaffold(topBar = {
         TopAppBar(title = {
             Text(text = "Steganography App")
         })
+    }, snackbarHost = {
+        SnackbarHost(hostState = snackbarHostState)
     }) {
         Column(
             modifier = Modifier.fillMaxSize().padding(it),
@@ -102,6 +115,11 @@ fun FilePickingScreen(
                 })
                 Button(onClick = {
                     fileViewModel.onEvent(FileEvents.AddMessage)
+                }) {
+                    Text(text = "Add message")
+                }
+                Button(onClick = {
+                    fileViewModel.onEvent(FileEvents.SaveToStorage)
                 }) {
                     Text(text = "Save message")
                 }
