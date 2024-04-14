@@ -1,7 +1,6 @@
 package com.matiz22.steganography_app.presentation.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,36 +20,46 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.matiz22.steganography_app.presentation.event.FileEvents
 import com.matiz22.steganography_app.presentation.viewmodels.FileViewModel
-import steganography_app.composeapp.generated.resources.Res
+import util.resolveImageExtension
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilePickingScreen(
     fileViewModel: FileViewModel = viewModel(),
 ) {
-    val image = fileViewModel.selectedImageUri
+    val image = fileViewModel.selectedImage
     val decoded = fileViewModel.decodedMessage
     val message = fileViewModel.message
+    val context = LocalContext.current
 
-    val photoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri ->
-            fileViewModel.onEvent(FileEvents.PickFile(uri = uri))
-        }
-    )
-
-    Scaffold(
-        topBar = {
-            TopAppBar(title = {
-                Text(text = "Steganography App")
+    val photoPicker =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent(),
+            onResult = { uri ->
+                if (uri != null) {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        fileViewModel.onEvent(
+                            FileEvents.PickFile(
+                                bytes = input.readBytes(),
+                                type = resolveImageExtension(
+                                    context.contentResolver.getType(uri) ?: ""
+                                )
+                            )
+                        )
+                    }
+                }
             })
-        }
-    ) {
+
+    Scaffold(topBar = {
+        TopAppBar(title = {
+            Text(text = "Steganography App")
+        })
+    }) {
         Column(
             modifier = Modifier.fillMaxSize().padding(it),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -62,7 +71,7 @@ fun FilePickingScreen(
             ) {
                 AsyncImage(
                     modifier = Modifier.size(400.dp),
-                    model = image,
+                    model = image?.photo,
                     contentDescription = null,
                     contentScale = ContentScale.Crop
                 )
@@ -73,7 +82,7 @@ fun FilePickingScreen(
                 horizontalArrangement = Arrangement.SpaceAround,
             ) {
                 Button(onClick = {
-                    photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    photoPicker.launch("image/*")
                 }) {
                     Text(text = "Pick")
                 }
@@ -88,17 +97,12 @@ fun FilePickingScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                TextField(
-                    value = message,
-                    onValueChange = { string ->
-                        fileViewModel.onEvent(FileEvents.UpdateMessage(string))
-                    }
-                )
-                Button(
-                    onClick = {
-                        fileViewModel.onEvent(FileEvents.AddMessage)
-                    }
-                ){
+                TextField(value = message, onValueChange = { string ->
+                    fileViewModel.onEvent(FileEvents.UpdateMessage(string))
+                })
+                Button(onClick = {
+                    fileViewModel.onEvent(FileEvents.AddMessage)
+                }) {
                     Text(text = "Save message")
                 }
             }
