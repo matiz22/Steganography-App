@@ -4,21 +4,9 @@ import domain.model.PhotoType
 import domain.repository.FileProcessingRepository
 
 class FileProcessingRepositoryImpl : FileProcessingRepository {
-    @OptIn(ExperimentalStdlibApi::class)
+
     override suspend fun addMessage(photo: Photo): Photo? {
-        val startAndEndOfFileType = when (photo.photoType) {
-            PhotoType.JPG -> {
-                StartAndEndOfFileTypes.JPGFileStartEnd
-            }
-
-            PhotoType.PNG -> {
-                StartAndEndOfFileTypes.PNGFileStartEnd
-            }
-
-            PhotoType.TypeNotSupported -> {
-                return null
-            }
-        }
+        val startAndEndOfFileType = provideByteSequence(photo) ?: return null
         var matchingIndex = 0
         val photoArrayIndexes = photo.photo.indices
         var startOfPhoto: Int = 0
@@ -29,7 +17,7 @@ class FileProcessingRepositoryImpl : FileProcessingRepository {
                 matchingIndex = 0
             }
             if (matchingIndex == startAndEndOfFileType.start.size) {
-                startOfPhoto = i - matchingIndex
+                startOfPhoto = (i - matchingIndex) + 1
                 matchingIndex = 0
                 break
             }
@@ -43,21 +31,39 @@ class FileProcessingRepositoryImpl : FileProcessingRepository {
                 matchingIndex = 0
             }
             if (matchingIndex == startAndEndOfFileType.end.size) {
-                endOfPhoto = i - matchingIndex
+                endOfPhoto = i + matchingIndex
                 break
             }
         }
         return try {
+            val message = encrypt(text = photo.message).encodeToByteArray()
+            val combinedArray = photo.photo.copyOfRange(startOfPhoto, endOfPhoto).plus(message)
             photo.copy(
-                photo = photo.photo.copyOfRange(
-                    startOfPhoto,
-                    endOfPhoto
-                ) + encrypt(text = photo.message).hexToByteArray()
+                photo = combinedArray
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             null
         }
     }
+
+    override suspend fun readMessage(photo: Photo): String? {
+        val startAndEndOfFileType = provideByteSequence(photo) ?: return null
+        val photoArrayIndexes = photo.photo.indices
+        var matchingIndex = 0
+        for (i in photoArrayIndexes) {
+            if (startAndEndOfFileType.end[matchingIndex] == photo.photo[i]) {
+                matchingIndex += 1
+            } else {
+                matchingIndex = 0
+            }
+            if (matchingIndex == startAndEndOfFileType.start.size) {
+                return decrypt(photo.photo.copyOfRange(i + 1, photo.photo.size).decodeToString())
+            }
+        }
+        return null
+    }
+
     private fun encrypt(text: String, shiftKey: Int = 10): String {
         val result = StringBuilder()
 
@@ -70,11 +76,25 @@ class FileProcessingRepositoryImpl : FileProcessingRepository {
                 result.append(char)
             }
         }
-
         return result.toString()
     }
 
     private fun decrypt(text: String, shiftKey: Int = 10): String {
         return encrypt(text, 26 - shiftKey)
     }
+
+    private fun provideByteSequence(photo: Photo): StartAndEndOfFileTypes? =
+        when (photo.photoType) {
+            PhotoType.JPG -> {
+                StartAndEndOfFileTypes.JPGFileStartEnd
+            }
+
+            PhotoType.PNG -> {
+                StartAndEndOfFileTypes.PNGFileStartEnd
+            }
+
+            PhotoType.TypeNotSupported -> {
+                null
+            }
+        }
 }
