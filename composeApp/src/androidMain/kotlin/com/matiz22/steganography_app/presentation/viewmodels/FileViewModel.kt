@@ -39,7 +39,7 @@ class FileViewModel : ViewModel() {
                 )
                 viewModelScope.launch {
                     val message = fileProcessingRepository.readMessage(photo = selectedImage!!)
-                    selectedImage = selectedImage?.copy(message = message!!)
+                    decodedMessage = selectedImage?.copy(message = message!!)?.message
                 }
 
             }
