@@ -1,25 +1,20 @@
 package com.matiz22.steganography_app.presentation.viewmodels
 
-import FileProcessingRepositoryImpl
-import android.net.Uri
+import data.repository.FileProcessingRepositoryImpl
 import android.os.Environment
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.net.toFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.matiz22.steganography_app.presentation.event.FileEvents
 import domain.model.Photo
-import domain.model.PhotoType
 import domain.repository.FileProcessingRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import util.resolveImageExtension
 import java.io.File
 import java.io.FileOutputStream
 
