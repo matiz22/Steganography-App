@@ -34,9 +34,10 @@ class FileViewModel : ViewModel() {
                 )
                 viewModelScope.launch {
                     val message = fileProcessingRepository.readMessage(photo = selectedImage!!)
-                    decodedMessage = selectedImage?.copy(message = message!!)?.message
+                    if(message != null){
+                        decodedMessage = selectedImage?.copy(message = message)?.message
+                    }
                 }
-
             }
 
             is FileEvents.UnpickFile -> {
